@@ -6,6 +6,7 @@ const ctable = require("console.table");
 const app = express();
 
 var PORT = process.env.PORT || 8080;
+let departArr = [];
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -22,24 +23,24 @@ var connection = mysql.createConnection({
 });
 
 connection.connect(function(err) {
-  if (err) {
-      console.error("error connecting: " + err.stack);
-      return;}
-      console.log("connected as id " + connection.threadId);
-      inquire();
-});
-
-app.listen(PORT, function() {
-    console.log("Server listening on: http://localhost:" + PORT);
-});
-
+    if (err) {
+        console.error("error connecting: " + err.stack);
+        return;}
+        console.log("connected as id " + connection.threadId);
+        inquire();
+    });
+    
+    app.listen(PORT, function() {
+        console.log("Server listening on: http://localhost:" + PORT);
+    });
+    
 function inquire() {
     inquirer.prompt([
         {
             type: "list",
             message: "What would you like to do?",
             name: "whatDo",
-            choices: ["Add department", "Add role", "Add employee", "Veiw employees", "Update employee roles", "Quit"]
+            choices: ["Add department", "Add role", "Add employee", "View employees", "Update employee roles", "Quit"]
         }
     ]).then(function(data) {
         if (data.whatDo === "Add department") {
@@ -55,8 +56,7 @@ function inquire() {
             })
         }
         if (data.whatDo === "Add role") {
-            let departArr= [];
-            updateArr();
+            returnDep();
             console.log("dept arr is ", departArr);
             
             inquirer.prompt([
@@ -84,7 +84,9 @@ function inquire() {
         }
         if (data.whatDo === "Add employee") {
 
-            let managerArr = [];
+            let managerList = [];
+            returnManagerList();
+            console.log("manager list is: ", managerList)
             let roleArr = [];
 
             inquirer.prompt([
@@ -108,7 +110,8 @@ function inquire() {
                     name: "manager",
                     message: "Who manages the new employee?",
                     type: "list",
-                    choices: 
+                    choices: managerList
+                }
         
             ]).then((answer) => {
                 let role = answer.role;
@@ -118,11 +121,17 @@ function inquire() {
                     manager = parseInt(manager.charAt(0));
                 } else {
                     manager = null;
+                    role = parseInt(role.charAt(0));
                 }
                 
               addEmployee(answer.first, answer.last, role, manager)
             })
 
+        }
+
+        if (data.whatDo === "View employees") {
+            viewEmployees();
+            inquire()
         }
     
         if (data.whatDo === "Quit") {
@@ -168,11 +177,18 @@ function addEmployee(f, l, r, m) {
     })
 };
 
-function returnDep() {
+async function returnDep() {
     connection.query("SELECT name FROM department GROUP BY name",
     (err, res) => {
         if(err) throw err;
-        return res;
+        departArr = JSON.stringify(res);
+    })
+}
+function returnRole() {
+    connection.query("SELECT name FROM role GROUP BY name",
+    (err, res) => {
+        if(err) throw err;
+        roleArr = JSON.stringify(res);
     })
 }
 function returnDepId(dept) {
@@ -183,9 +199,20 @@ function returnDepId(dept) {
                 })
 }
 
-function viewCategory(category) {
+function returnManagerList() {
+    connection.query("SELECT name FROM employee WHERE manager_id = NOT NULL", 
+    (err, res) => {
+        if (err) throw err;
+        managerList = JSON.stringify(res)
+    })
+}
 
-    connection.query("SELECT * FROM")
+function viewEmployees() {
+
+    connection.query("SELECT * FROM employees", (err, res) => {
+        if (err) throw err;
+        ctable(res)
+    })
 
 };
 
@@ -195,14 +222,15 @@ connection.query("SELECT name FROM department GROUP BY name",
     if(err) throw err;
     // console.log(res);
     console.log(JSON.stringify(res));
-    // let arr = JSON.stringify(res);
+    departArr = JSON.stringify(res);
+    // departArr =
     // console.log("new arr= ", arr.map(res));
     //  departArr = res.map(obj => {
     //     let newArr = [];
     //     newArr.push(obj.name);
     //     return newArr;
     // });
-    res.forEach(result => departArr.push(result))
+    // res.forEach(result => departArr.push(result))
 });
 }
 // function updateRoles();
